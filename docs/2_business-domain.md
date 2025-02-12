@@ -100,22 +100,22 @@ public class MemberApp {
 
 ### 2️⃣ 회원 도메인 - 회원 가입 테스트
 
-`test/…../member/MemberServiceTest.java`
+`test/.../member/MemberServiceTest`
 
 ```java
 MemberService memberService = new MemberServiceImpl();
 
 @Test
 void join() {
-		//given
-		Member member = new Member(1L, "memberA", Grade.VIP);
+        //given
+        Member member = new Member(1L, "memberA", Grade.VIP);
 
-		//when
-		memberService.join(member);
-		Member findMember = memberService.findMember(1L);
+        //when
+        memberService.join(member);
+        Member findMember = memberService.findMember(1L);
 
-		//then
-		Assertions.assertThat(member).isEqualTo(findMember);
+        //then
+        Assertions.assertThat(member).isEqualTo(findMember);
 }
 ```
 
@@ -194,3 +194,25 @@ void join() {
 - **주문 서비스 구현체 : `order/OrderServiceImpl`**
   - 주문 생성 요청이 오면, 회원 정보를 조회하고, 할인 정책을 적용한 다음 주문 객체를 생성해서 반환한다.
   - **메모리 회원 리포지토리와 고정 금액 할인 정책을 구현체로 생성한다.**
+
+---
+
+## 7. 주문과 할인 정책 테스트
+
+### 1️⃣ 주문과 할인 정책 테스트
+
+`test/.../order/OrderServiceTest`
+```java
+MemberService memberService = new MemberServiceImpl();
+OrderService orderService = new OrderServiceImpl();
+
+@Test
+void createOrder() {
+        Long memberId = 1L;
+        Member member = new Member(memberId, "memberA", Grade.VIP);
+        memberService.join(member);
+
+        Order order = orderService.createOrder(memberId, "itemA", 10000);
+        Assertions.assertThat(order.getDiscountPrice()).isEqualTo(1000);
+}
+```
