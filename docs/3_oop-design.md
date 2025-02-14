@@ -76,3 +76,182 @@ public class OrderServiceImpl implements OrderService{
 - 그래서 구체 클래스를 변경할 때 클라이언트 코드도 함께 변경해야 한다.
 - **DIP 위반 → 추상에만 의존하도록 변경 (인터페이스에만 의존)**
 - DIP를 위반하지 않도록 인터페이스에만 의존하도록 의존 관계를 변경하면 된다.
+  <img width="866" alt="Image" src="https://github.com/user-attachments/assets/89a17664-15e7-4da6-868a-ffc0bb558d71" />
+
+<br/>
+
+
+**인터페이스에만 의존하도록 코드 변경**
+
+```java
+public class OrderServiceImpl implements OrderService{
+    private final MemberRepository memberRepository = new MemoryMemberRepository();
+    // 인터페이스에만 의존하도록 변경 (DIP)
+    private DiscountPolicy discountPolicy;
+}
+```
+<img width="866" alt="Image" src="https://github.com/user-attachments/assets/89a17664-15e7-4da6-868a-ffc0bb558d71" />
+
+- 구현체가 없어서 코드를 실행해보면, NPE(Null Pointer Exception)이 발생한다.
+
+<br/>
+
+**해결방안**
+
+- 누군가가 클라이언트인 `OrderServiceImpl` 에 `DiscountPolicy` 의 구현 객체를 대신 생성하고 주입해주어야 한다.
+
+<br/>
+
+## 3. 관심사의 분리
+
+### 1️⃣ AppConfig
+
+- 애플리케이션의 전체 동작 방식을 구성(config)하기 위해, **구현 객체를 생성**하고, **연결하는 책임**을 가지는 별도의 설정 클래스를 만든다.
+
+```java
+public class AppConfig {
+    public MemberService memberService() {
+        return new MemberServiceImpl(new MemoryMemberRepository());
+    }
+
+    public OrderService orderService() {
+        return new OrderServiceImpl(new MemoryMemberRepository(), new FixDiscountPolicy());
+    }
+}
+```
+
+- AppConfig는 애플리케이션의 실제 동작에 필요한 **구현 객체를 생성**한다.
+  - `MemberServiceImpl`
+  - `MemoryMemberRepository`
+  - `OrderServiceImpl`
+  - `FixDiscountPolicy`
+- AppConfig는 생성한 객체 인스턴스의 참조(레퍼런스)를 **생성자를 통해서 주입(연결)**해준다.
+  - `MemberServiceImpl`  → `MemoryMemberRepository`
+  - `OrderServiceImpl` → `MemoryMemberRepository` , `FixDiscountPolicy`
+
+<br/>
+
+### 2️⃣ MemberServiceImpl - 생성자 주입
+
+```java
+public class MemberServiceImpl implements MemberService {
+    private final MemberRepository memberRepository;
+
+    public MemberServiceImpl(MemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
+    }
+}
+```
+
+- 설계 변경으로 `MemberServiceImpl` 은  `MemoryMemberRepository` 를 의존하지 않는다.
+- 단지 `MemberRepository` 인터페이스만 의존한다.
+- `MemberServiceImpl` 입장에서 생성자를 통해 어떤 구현 객체가 주입될지는 알 수 없다.
+- `MemberServiceImpl` 의 생성자를 통해서 어떤 구현 객체를 주입할지는 오직 외부(`AppConfig`)에서 결정된다.
+- `MemberServiceImpl` 은 이제부터 **의존관계에 대한 고민은 외부**에 맡기고 **실행에만 집중**하면 된다.
+
+<br/>
+
+### 3️⃣ 다이어그램
+
+**클래스 다이어그램**
+
+<img width="745" alt="Image" src="https://github.com/user-attachments/assets/b5194ed6-89d5-4b55-941b-f9854f1e48a3" />
+
+- 객체의 생성과 연결은 AppConfig가 담당한다.
+- **DIP 완성 :** `MemberServiceImpl` 은 `MemberRepository` 인 추상에만 의존하면 된다. 구체 클래스를 몰라도 된다.
+- **관심사의 분리 : 객체를 생성하고 연결하는 역할과 실행하는 역할이 명확히 분리되었다.**
+
+<br/>
+
+**회원 객체 인스턴스 다이어그램**
+
+<img width="848" alt="Image" src="https://github.com/user-attachments/assets/ef3c95aa-dcf1-4f62-a8b4-e12c4b19c173" />
+
+- `AppConfig` 객체는 `MemoryMemberRepository` 객체를 생성하고 그 참조값을 `MemberServiceImpl` 을 생성하면서 생성자로 전달한다.
+- 클라이언트인 `MemberServiceImpl` 입장에서 보면 의존관계를 마치 외부에서 주입해주는 것 같다고 해서 `DI (Dependency Injection)` , 우리말로 의존 관계 주입 또는 의존성 주입이라 한다.
+
+<br/>
+
+### 4️⃣ OrderServiceImpl - 생성자 주입
+
+```java
+public class OrderServiceImpl implements OrderService{
+    private final MemberRepository memberRepository;
+    private final DiscountPolicy discountPolicy;
+
+    public OrderServiceImpl(MemberRepository memberRepository, DiscountPolicy discountPolicy) {
+        this.memberRepository = memberRepository;
+        this.discountPolicy = discountPolicy;
+    }
+}
+```
+
+- 설계 변경으로 `OrderServiceImpl` 은 `FixDiscountPolicy` 를 의존하지 않는다.
+- 단지 `DiscountPolicy` 인터페이스만 의존한다.
+- `OrderServiceImpl` 입장에서 생성자를 통해 어떤 구현 객체가 주입될지는 알 수 없다.
+- `OrderServiceImpl` 의 생성자를 통해서 어떤 구현 객체를 주입할지는 오직 외부(`AppConfig`)에서 결정한다.
+- `OrderServiceImpl` 은 이제부터 실행에만 집중하면 된다.
+- `OrderServiceImpl` 에는 `MemoryMemberRepository` , `FixDiscountPolicy` 객체의 의존관계가 주입된다.
+
+<br/>
+
+## 4. AppConfig 실행
+
+### 1️⃣ 사용 클래스 - MemberApp
+
+```java
+public class MemberApp {
+    public static void main(String[] args) {
+        AppConfig appConfig = new AppConfig();
+        MemberService memberService = appConfig.memberService();
+
+        Member member = new Member(1L, "memberB", Grade.VIP);
+        memberService.join(member);
+
+        Member findMember = memberService.findMember(1L);
+        System.out.println("new member = " + member.getName());
+        System.out.println("find Member = " + findMember.getName());
+    }
+}
+```
+
+<br/>
+
+### 2️⃣ 사용 클래스 - OrderApp
+
+```java
+public class OrderApp {
+    public static void main(String[] args) {
+        AppConfig appConfig = new AppConfig();
+        MemberService memberService = appConfig.memberService();
+        OrderService orderService = appConfig.orderService();
+
+        Long memberId = 1L;
+        Member member = new Member(memberId, "memberA", Grade.VIP);
+        memberService.join(member);
+
+        Order order = orderService.createOrder(memberId, "itemA", 10000);
+        System.out.println("order = " + order);
+    }
+}
+```
+
+<br/>
+
+### 3️⃣ 테스트 코드 오류 수정
+
+```java
+public class OrderServiceTest {
+    MemberService memberService;
+    OrderService orderService;
+
+    @BeforeEach
+    public void beforeEach() {
+        AppConfig appConfig = new AppConfig();
+        memberService = appConfig.memberService();
+        orderService = appConfig.orderService();
+    }
+}
+```
+
+- 테스트 코드에서 `@BeforeEach` 는 각 테스트를 실행하기 전에 호출된다.
