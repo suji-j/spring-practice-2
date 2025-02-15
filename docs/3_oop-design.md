@@ -255,3 +255,72 @@ public class OrderServiceTest {
 ```
 
 - 테스트 코드에서 `@BeforeEach` 는 각 테스트를 실행하기 전에 호출된다.
+
+<br/>
+
+**정리**
+
+- AppConfig를 통해서 관심사를 확실하게 분리했다.
+- AppConfig는 구체 클래스를 선택한다. 애플리케이션이 어떻게 동작해야 할지 전체 구성을 책임진다.
+- 각 구현체들은 담당 기능을 실행하는 책임만 지면 된다.
+- `OrderServiceImpl` 은 기능을 실행하는 책임만 지면 된다.
+
+<br/>
+
+## 5. AppConfig 리팩터링
+
+- 현재 AppConfig는 중복이 있고, 역할에 따른 구현이 잘 안 보인다.
+
+<br/>
+
+### 1️⃣ 기대하는 그림
+
+![Image](https://github.com/user-attachments/assets/cedb64f9-ae06-47ea-9813-61c7ac6ce743)
+
+<br/>
+
+### 2️⃣ 리팩터링 전
+
+```java
+public class AppConfig {
+    public MemberService memberService() {
+        return new MemberServiceImpl(new MemoryMemberRepository());
+    }
+
+    public OrderService orderService() {
+        return new OrderServiceImpl(new MemoryMemberRepository(), new FixDiscountPolicy());
+    }
+}
+```
+
+- 중복을 제거하고, 역할에 따른 구현이 보이도록 리팩터링한다.
+  - `new MemoryMemberRepository()` 중복
+
+<br/>
+
+### 3️⃣ 리팩터링 후
+
+```java
+public class AppConfig {
+    public MemberService memberService() {
+        return new MemberServiceImpl(memberRepository());
+    }
+
+    private MemberRepository memberRepository() {
+        return new MemoryMemberRepository();
+    }
+
+    public OrderService orderService() {
+        return new OrderServiceImpl(memberRepository(), discountPolicy());
+    }
+
+    public DiscountPolicy discountPolicy() {
+        return new FixDiscountPolicy();
+    }
+}
+```
+
+- `new MemoryMemberRepository()` 이 부분이 중복 제거되었다.
+- 이제 `MemoryMemberRepository` 를 다른 구현체로 변경할 때 한 부분만 변경하면 된다.
+- `AppConfig` 를 보면 역할과 구현 클래스가 한 눈에 들어온다.
+- 애플리케이션 전체 구성이 어떻게 되어있는지 빠르게 파악할 수 있다.
