@@ -324,3 +324,45 @@ public class AppConfig {
 - 이제 `MemoryMemberRepository` 를 다른 구현체로 변경할 때 한 부분만 변경하면 된다.
 - `AppConfig` 를 보면 역할과 구현 클래스가 한 눈에 들어온다.
 - 애플리케이션 전체 구성이 어떻게 되어있는지 빠르게 파악할 수 있다.
+
+<br/>
+
+## 6. 새로운 구조와 할인 정책 적용
+
+- 정액 할인 정책 → 정률% 할인 정책으로 변경
+- `FixDiscountPolicy`  → `RateDiscountPolicy`
+
+→ **AppConfig의 등장으로 애플리케이션이 크게 사용 영역과, 객체를 생성하고 구성(Configuration)하는 영역으로 분리되었다.**
+
+<br/>
+
+### 1️⃣ 사용, 구성의 분리
+
+<img width="848" alt="Image" src="https://github.com/user-attachments/assets/65476ef5-843b-4d3d-82ba-847224c8e07c" />
+
+<br/>
+
+### 2️⃣ 할인 정책의 변경
+
+<img width="848" alt="Image" src="https://github.com/user-attachments/assets/62ff6372-8b82-4014-94e2-e4e77ce9a7ce" />
+
+- `FixDiscountPolicy`  → `RateDiscountPolicy` 로 변경해도 구성 영역만 영향을 받고, 사용 영역은 전혀 영향을 받지 않는다.
+
+<br/>
+
+### 3️⃣ 할인 정책 변경 구성 코드
+
+`AppConfig`
+
+```java
+public DiscountPolicy discountPolicy() {
+//        return new FixDiscountPolicy();
+        return new RateDiscountPolicy();
+}
+```
+
+- AppConfig에서 할인 정책 역할을 담당하는 구현을 `FixDiscountPolicy`  → `RateDiscountPolicy` 객체로 변경했다.
+- 이제 할인 정책을 변경해도, 애플리케이션의 구성 역할을 담당하는 AppConfig만 변경하면 된다.
+- 클라이언트 코드인 `OrderServiceImpl` 를 포함해서 사용 영역의 어떤 코드도 변경할 필요가 없다.
+- 구성 영역은 당연히 변경된다.
+- 구성 영역을 담당하는 AppConfig는 애플리케이션의 구현 객체들을 모두 알아야 한다.
