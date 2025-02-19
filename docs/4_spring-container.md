@@ -64,3 +64,108 @@ ApplicationContext applicationContext = new AnnotationConfigApplicationContext(A
 > 참고 : 스프링은 빈을 생성하고, 의존관계를 주입하는 단계가 나누어져 있다. 그런데 자바 코드로 스프링 빈을 등록하면 생성자를 호출하면서 의존관계 주입도 한 번에 처리된다.
 >
 - 정리 : 스프링 컨테이너를 생성하고, 설정(구성) 정보를 참고해서 스프링 빈도 등록하고, 의존관계도 설정했다.
+
+<br/>
+
+## 3. 컨테이너에 등록된 모든 빈 조회
+
+### 1️⃣ 모든 빈 조회하기
+
+```java
+class ApplicationContextInfoTest {
+    AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(AppConfig.class);
+
+    @Test
+    @DisplayName("모든 빈 출력하기")
+    void findAllBean() {
+        String[] beanDefinitionNames = ac.getBeanDefinitionNames();
+        for (String beanDefinitionName : beanDefinitionNames) {
+            Object bean = ac.getBean(beanDefinitionName);
+            System.out.println("name = " + beanDefinitionName + " object = " + bean);
+        }
+    }
+}
+
+```
+
+- 실행하면 스프링에 등록된 모든 빈 정보를 출력할 수 있다.
+- `ac.getBeanDefinitionNames()`  : 스프링에 등록된 모든 빈 이름을 조회한다.
+- `ac.getBean()` : 빈 이름으로 빈 객체(인스턴스)를 조회한다.
+
+<br/>
+
+### 2️⃣ 애플리케이션 빈 출력하기
+
+```java
+class ApplicationContextInfoTest {
+    AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(AppConfig.class);
+
+    @Test
+    @DisplayName("애플리케이션 빈 출력하기")
+    void findApplicationBean() {
+        String[] beanDefinitionNames = ac.getBeanDefinitionNames();
+        for (String beanDefinitionName : beanDefinitionNames) {
+            BeanDefinition beanDefinition = ac.getBeanDefinition(beanDefinitionName);
+
+            if (beanDefinition.getRole() == BeanDefinition.ROLE_APPLICATION) {
+                Object bean = ac.getBean(beanDefinitionName);
+                System.out.println("name = " + beanDefinitionName + " object = " + bean);
+            }
+        }
+    }
+}
+```
+
+- 스프링에 내부에서 사용하는 빈은 제외하고, 내가 등록한 빈만 확인할 수 있다.
+- 스프링이 내부에서 사용하는 빈은 `getRole()` 로 구분할 수 있다.
+  - `ROLE_APPLICATION` : 직접 등록한 애플리케이션 빈
+  - `ROLE_INFRASTRUCTURE` : 스프링이 내부에서 사용하는 빈
+
+<br/>
+
+## 4. 스프링 빈 조회 - 기본
+
+스프링 컨테이너에서 스프링 빈을 찾는 가장 기본적인 조회 방법
+
+- `ac.getBean(빈 이름, 타입)`
+- `ac.getBean(타입)`
+- 조회 대상 스프링 빈이 없으면 예외 발생
+  - `NoSuchBeanDefinitionException: No bean named 'xxxx' available`
+
+```java
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class ApplicationContextBasicFindTest {
+    AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(AppConfig.class);
+
+    @Test
+    @DisplayName("빈 이름으로 조회")
+    void findBeanByName() {
+        MemberService memberService = ac.getBean("memberService", MemberService.class);
+        assertThat(memberService).isInstanceOf(MemberServiceImpl.class);
+    }
+
+    @Test
+    @DisplayName("이름 없이 타입으로만 조회")
+    void findBeanByType() {
+        MemberService memberService = ac.getBean(MemberService.class);
+        assertThat(memberService).isInstanceOf(MemberServiceImpl.class);
+    }
+
+    @Test
+    @DisplayName("구체 타입으로 조회")
+    void findBeanByName2() {
+        MemberService memberService = ac.getBean("memberService", MemberServiceImpl.class);
+        assertThat(memberService).isInstanceOf(MemberServiceImpl.class);
+    }
+
+    @Test
+    @DisplayName("빈 이름으로 조회 X")
+    void findBeanByNameX() {
+//        MemberService memberService = ac.getBean("xxxx", MemberService.class);
+        assertThrows(NoSuchBeanDefinitionException.class, () -> ac.getBean("xxxx", MemberService.class));
+    }
+}
+
+```
