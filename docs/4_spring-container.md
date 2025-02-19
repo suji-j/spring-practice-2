@@ -30,6 +30,7 @@ ApplicationContext applicationContext = new AnnotationConfigApplicationContext(A
 - 스프링 컨테이너를 생성할 때는 구성 정보를 지정해주어야 한다.
 - 여기서는 `AppConfig.class` 를 구성 정보로 지정했다.
 
+
 <br/>
 
 ### 2️⃣ 스프링 빈 등록
