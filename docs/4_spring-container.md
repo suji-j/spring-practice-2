@@ -343,3 +343,7 @@ public class ApplicationContextExtendsFindTest {
 - ApplicationContext는 빈 관리 기능 + 편리한 부가 기능을 제공한다.
 - BeanFactory를 직접 사용할 일은 거의 없다. 부가 기능이 포함된 ApplicationContext를 사용한다.
 - BeanFactory나 ApplicationContext를 `스프링 컨테이너`라 한다.
+- 스프링은 `BeanDefiniton`으로 `스프링 빈 설정 메타 정보`를 추상화한다.
+- 스프링 빈 만드는 방법
+  -  직접 스프링 빈을 등록하는 방법
+  - FactoryBean을 이용하여 등록하는 방법 (JAVA Confing)
