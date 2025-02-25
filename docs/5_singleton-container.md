@@ -224,3 +224,140 @@ class StatefulServiceTest {
 - `StatefulService` 의 `price` 필드는 공유되는 필드인데, 특정 클라이언트가 값을 변경한다.
 - 사용자A의 주문금액은 10000원이 되어야 하는데, 20000원이라는 결과가 나온다.
 - 공유필드는 조심해야 한다. 스프링 빈은 항상 무상태(Stateless)로 설계한다.
+
+<br/>
+
+## 5. @Configuration과 싱글톤
+
+### 1️⃣ AppConfig
+
+```java
+@Configuration
+public class AppConfig {
+    @Bean
+    public MemberService memberService() {
+        return new MemberServiceImpl(memberRepository());
+    }
+
+    @Bean
+    public MemberRepository memberRepository() {
+        return new MemoryMemberRepository();
+    }
+
+    @Bean
+    public OrderService orderService() {
+        return new OrderServiceImpl(memberRepository(), discountPolicy());
+    }
+
+    @Bean
+    public DiscountPolicy discountPolicy() {
+        return new RateDiscountPolicy();
+    }
+}
+
+```
+
+- memberService 빈을 만드는 코드를 보면 `memberRepository()` 호출한다.
+  - 이 메서드를 호출하면 `new MemoryMemberRepository()` 를 호출한다.
+- orderService 빈을 만드는 코드를 보면 `memberRepository()` 호출한다.
+  - 이 메서드를 호출하면 `new MemoryMemberRepository()` 를 호출한다.
+
+→ 결과적으로 각각 다른 2개의 `MemoryMemberRepository` 가 생성되면서 싱글톤이 깨지는 것 처럼 보인다.
+
+<br/>
+
+### 2️⃣ 검증 용도의 코드 추가
+
+```java
+public class MemberServiceImpl implements MemberService {
+    // Test
+    public MemberRepository getMemberRepository() {
+        return memberRepository;
+    }
+}
+```
+
+```java
+public class OrderServiceImpl implements OrderService {
+    // Test
+    public MemberRepository getMemberRepository() {
+        return memberRepository;
+    }
+}
+```
+
+- 테스트를 위해 `MemberRepository` 를 조회할 수 있는 기능을 추가한다.
+
+<br/>
+
+### 3️⃣ 테스트 코드 작성
+
+```java
+public class ConfigurationSingletonTest {
+    @Test
+    void configurationTest() {
+        AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(AppConfig.class);
+
+        MemberServiceImpl memberService = ac.getBean("memberService", MemberServiceImpl.class);
+        OrderServiceImpl orderService = ac.getBean("orderService", OrderServiceImpl.class);
+        MemberRepository memberRepository = ac.getBean("memberRepository", MemberRepository.class);
+
+        MemberRepository memberRepository1 = memberService.getMemberRepository();
+        MemberRepository memberRepository2 = orderService.getMemberRepository();
+
+        System.out.println("memberService -> memberRepository = " + memberRepository1);
+        System.out.println("orderService -> memberRepository = " + memberRepository2);
+        System.out.println("memberRepository -> memberRepository = " + memberRepository);
+
+        assertThat(memberService.getMemberRepository()).isSameAs(memberRepository);
+        assertThat(orderService.getMemberRepository()).isSameAs(memberRepository);
+    }
+}
+
+```
+
+- 확인해보면 `memberRepository` 인스턴스는 모두 같은 인스턴스가 공유되어 사용된다.
+- AppConfig의 자바 코드를 보면 분명히 각각 2번 `new MemoryMemberRepository()` 호출해서 다른 인스턴스가 생성되어야 하는데?
+- 두 번 호출이 안 되는 것일까?
+
+<br/>
+
+### 4️⃣ AppConfig에 호출 로그 남기기
+
+```java
+@Configuration
+public class AppConfig {
+    @Bean
+    public MemberService memberService() {
+        System.out.println("call AppConfig.memberService");
+        return new MemberServiceImpl(memberRepository());
+    }
+
+    @Bean
+    public MemberRepository memberRepository() {
+        System.out.println("call AppConfig.memberRepository");
+        return new MemoryMemberRepository();
+    }
+
+    @Bean
+    public OrderService orderService() {
+        System.out.println("call AppConfig.orderService");
+        return new OrderServiceImpl(memberRepository(), discountPolicy());
+    }
+
+    @Bean
+    public DiscountPolicy discountPolicy() {
+        return new RateDiscountPolicy();
+    }
+}
+
+```
+
+- 스프링 컨테이너가 각각 @Bean을 호출해서 스프링 빈을 생성한다. 그래서 `memberRepository()` 는 3번 호출 되어야 하는 것이 아닌가?
+  1. 스프링 컨테이너가 스프링 빈에 등록하기 위해 @Bean이 붙어있는 `memberRepository()` 호출
+  2. `memberService()` 로직에서 `memberRepository()` 호츌
+  3. `orderService()` 로직에서 `memberRepository()` 호출
+- 하지만, 결과는 모두 1번씩만 호출된다.
+  - call AppConfig.memberService
+  - call AppConfig.memberRepository
+  - call AppConfig.orderService
