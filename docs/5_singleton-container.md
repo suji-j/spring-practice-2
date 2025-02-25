@@ -358,6 +358,85 @@ public class AppConfig {
   2. `memberService()` 로직에서 `memberRepository()` 호츌
   3. `orderService()` 로직에서 `memberRepository()` 호출
 - 하지만, 결과는 모두 1번씩만 호출된다.
-  - call AppConfig.memberService
-  - call AppConfig.memberRepository
-  - call AppConfig.orderService
+```java
+call AppConfig.memberService 
+call AppConfig.memberRepository
+call AppConfig.orderService
+```
+
+<br/>
+
+## 6. @Configuration과 바이트코드 조작의 마법
+
+- 스프링 컨테이너는 싱글톤 레지스트리다. 따라서 스프링 빈이 싱글톤이 되도록 보장해주어야 한다.
+- 그런데 스프링이 자바 코드까지 어떻게 하기는 어렵다. 저 자바 코드를 보면 분명 3번 호출되어야 하는 것이 맞다.
+- 그래서 스프링은 클래스의 `바이트코드`를 조작하는 라이브러리를 사용한다.
+- 모든 비밀은 `@Configuration` 을 적용한 `AppConfig` 에 있다.
+
+<br/>
+
+### 1️⃣ AppConfig
+
+```java
+public class ConfigurationSingletonTest {
+    @Test
+    void configurationDeep() {
+        AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(AppConfig.class);
+        AppConfig bean = ac.getBean(AppConfig.class);
+
+        System.out.println("bean = " + bean.getClass());
+    }
+}
+```
+
+- `AnnotationConfigApplicationContext` 에 파라미터로 넘긴 값은 스프링 빈으로 등록된다. 그래서 `AppConfig` 도 스프링 빈이 된다.
+- `AppConfig` 스프링 빈을 조회해서 클래스 정보를 출력해본다.
+
+→ `bean = class hello.core.AppConfig$$SpringCGLIB`
+
+- 순수한 클래스라면 `class hello.core.AppConfig` 로 출력된다.
+- 예상과는 다르게 클래스 명에 xxxCGLIB가 붙으면서 복잡해졌다.
+- 내가 만든 클래스가 아니라 스프링이 CGLIB라는 바이트코드 조작 라이브러리를 사용해서 AppConfig 클래스를 상속받은 임의의 다른 클래스를 만들고, 그 다른 클래스를 스프링 빈으로 등록한 것이다.
+- 그 임의의 다른 클래스가 싱글톤이 보장되도록 해준다.
+
+<br/>
+
+### 2️⃣ AppConfig@CGLIB
+
+- `@Bean`이 붙은 메서드마다 이미 스프링 빈이 존재하면 존재하는 빈을 반환하고, 스프링 빈이 없으면 생성해서 스프링 빈으로 등록하고 반환하는 코드가 동적으로 만들어진다.
+- 덕분에 싱글톤이 보장된다.
+
+<br/>
+
+### 3️⃣ @Configuration을 적용하지 않고, @Bean만 적용하면 어떻게 될까?
+
+```java
+//@Configuration 삭제
+public class AppConfig {
+	...
+}
+```
+
+→ `bean = class hello.core.AppConfig`
+
+- AppConfig가 CGLIB 기술 없이 순수한 AppConfig로 스프링 빈에 등록된 것을 확인할 수 있다.
+
+```java
+call AppConfig.memberService
+call AppConfig.memberRepository
+call AppConfig.orderService
+call AppConfig.memberRepository
+call AppConfig.memberRepository
+```
+
+- 이 출력 결과를 통해서 `MemberRepository` 가 총 3번 호출된 것을 알 수 있다.
+- 1번은 @Bean에 의해 스프링 컨테이너에 등록하기 위해서이고, 2번은 `memberRepository()` 를 호출하면서 발생한 코드이다.
+- 당연히 인스턴스가 같은지 테스트하는 코드도 실패하고, 각각 다 다른 MemoryMemberRepository 인스턴스를 갖고 있다.
+
+<br/>
+
+### 4️⃣ 정리
+
+- `@Bean` 만 사용해도 스프링 빈으로 등록되지만, 싱글톤을 보장하지 않는다.
+  - `memberRepository()` 처럼 의존관계 주입이 필요해서 메서드를 직접 호출할 때 싱글톤을 보장하지 않는다.
+- 스프링 설정 정보는 항상 `@Configuration` 을 사용하자.
