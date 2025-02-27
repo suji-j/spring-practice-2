@@ -290,3 +290,49 @@ public class ComponentFilterAppConfigTest {
 
 > 참고 : `@Component` 면 충분하기 때문에, `includeFilters` 를 사용할 일은 거의 없다. `excludeFilters` 는 여러가지 이유로 사용할 때가 있지만 많지는 않다.
 >
+
+<br/>
+
+## 5. 중복 등록과 충돌
+
+- 컴포넌트 스캔에서 같은 빈 이름을 등록하면?
+  - 자동 빈 등록 vs 자동 빈 등록
+  - 수동 빈 등록 vs 자동 빈 등록
+
+<br/>
+
+### 1️⃣ 자동 빈 등록 vs 자동 빈 등록
+
+- 컴포넌트 스캔에 의해 자동으로 스프링 빈이 등록되는데, 그 이름이 같은 경우 스프링은 오류를 발생시킨다.
+- `ConflictingBeanDefinitionException`  예외 발생
+
+<br/>
+
+### 2️⃣ 수동 빈 등록 vs 자동 빈 등록
+
+- 자동
+
+```java
+@Component
+public class MemoryMemberRepository implements MemberRepository {}
+```
+<br/>
+
+- 수동
+
+```java
+@Configuration
+@ComponentScan(
+	excludeFilters = @Filter(type = FilterType.ANNOTATION, classes = Configuration.class)
+)
+public class AutoAppConfig {
+	@Bean(name = "memoryMemberRepository")
+	public MemberRepository memberRepository() {
+		return new MemoryMemberRepository();
+	}
+}
+```
+
+- 이 경우 수동 빈 등록이 우선권을 가진다.
+
+- 수동 빈이 자동 빈을 오버리이딩 해버린다.
