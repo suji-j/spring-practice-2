@@ -143,3 +143,54 @@ public class AutoAppConfigTest {
 - 이때 기본 조회 전략은 타입이 같은 빈을 찾아서 주입한다.
     - `getBean(MemberRepository.class)` 와 동일하다고 이해한다.
 - 생성자에 파라미터가 많아도 다 찾아서 자동으로 주입한다.
+
+<br/>
+
+## 2. 탐색 위치와 기본 스캔 대상
+
+### 1️⃣ 탐색할 패키지의 시작 위치 지정
+
+- 모든 자바 클래스를 다 컴포넌트 스캔하면 시간이 오래 걸린다. 그래서 필요한 위치부터 탐색하도록 시작 위치를 지정할 수 있다.
+
+```java
+@ComponentScan(
+	basePackages = "hello.core",
+}
+```
+
+- `basePackages`  : 탐색할 패키지의 시작 위치를 지정한다. 이 패키지를 포함해서 하위 패키지를 모두 탐색한다.
+  - `basePackages = {"hello.core", "hello.service"}` : 여러 개 지정할 수도 있다.
+- `basePackagesClasses`  : 지정한 클래스의 패키지를 탐색 시작 위치로 지정한다.
+- 만약 지정하지 않으면 `@ComponentScan` 이 붙은 설정 정보 클래스의 패키지가 시작 위치가 된다.
+
+<br/>
+
+**[ 권장하는 방법 ]**
+
+- 패키지 위치를 지정하지 않고, 설정 정보 클래스의 위치를 프로젝트 최상단에 두는 것이다.
+  - com.hello
+  - com.hello.service
+  - com.hello.repository
+- 이 구조라면, 프로젝트 시작 루트인 `com.hello` 에 AppConfig 같은 메인 설정 정보를 두고, `@ComponentScan` 애노테이션을 붙이고, `basePackages` 지정은 생략한다.
+- `com.hello` 를 포함한 하위는 모두 자동으로 컴포넌트 스캔의 대상이된다.
+
+<br/>
+
+### 2️⃣ 컴포넌트 스캔 기본 대상
+
+컴포넌트 스캔은 `@Component` 뿐만 아니라 다음과 같은 내용도 추가로 대상에 포함한다.
+
+- `@Component`  : 컴포넌트 스캔에서 사용
+- `@Controller`  : 스프링 MVC 컨트롤러에서 사용
+- `@Service`  : 스프링 비즈니스 로직에서 사용
+- `@Repository`  : 스프링 데이터 접근 계층에서 사용
+- `@Configuration` : 스프링 설정 정보에서 사용
+
+<br/>
+
+### 3️⃣ 애노테이션에 따른 부가 기능
+
+- `@Controller`  : 스프링 MVC 컨트롤러로 인식
+- `@Repository`  : 스프링 데이터 접근 계층으로 인식하고, 데이터 계층의 예외를 스프링 예외로 변환해준다.
+- `@Configuration`  : 스프링 설정 정보로 인식하고, 스프링 빈이 싱긇톤을 유지하도록 추가처리를 한다.
+- `@Service` : 특별한 처리가 없다. 대신 개발자들이 핵심 비즈니스 계층을 인식하도록 한다.
