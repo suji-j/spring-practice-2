@@ -194,3 +194,99 @@ public class AutoAppConfigTest {
 - `@Repository`  : 스프링 데이터 접근 계층으로 인식하고, 데이터 계층의 예외를 스프링 예외로 변환해준다.
 - `@Configuration`  : 스프링 설정 정보로 인식하고, 스프링 빈이 싱긇톤을 유지하도록 추가처리를 한다.
 - `@Service` : 특별한 처리가 없다. 대신 개발자들이 핵심 비즈니스 계층을 인식하도록 한다.
+
+<br/>
+
+## 3. 필터
+
+- `includeFilters`  : 컴포넌트 스캔 대상을 추가로 지정한다.
+- `excludeFilters`  : 컴포넌트 스캔에서 제외할 대상을 지정한다.
+
+### 1️⃣ 컴포넌트 스캔에서 추가 및 제외할 애노테이션
+
+- 추가
+
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface MyIncludeComponent {
+}
+```
+
+<br/>
+
+- 제외
+
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface MyExcludeComponent {
+}
+```
+
+<br/>
+
+### 2️⃣ 컴포넌트 스캔 대상에 추가 및 제외할 클래스
+
+- 추가 (`MyIncludeComponent` 적용)
+
+```java
+@MyIncludeComponent
+public class BeanA {
+}
+```
+<br/>
+
+- 제외 (`MyExcludeComponent` 적용)
+
+```java
+@MyExcludeComponent
+public class BeanB {
+}
+```
+
+<br>
+
+### 3️⃣ 설정 정보와 테스트 코드
+
+```java
+public class ComponentFilterAppConfigTest {
+    @Test
+    void filterScan() {
+        AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(ComponentFilterAppConfig.class);
+        BeanA beanA = ac.getBean("beanA", BeanA.class);
+        assertThat(beanA).isNotNull();
+
+        assertThrows(
+                NoSuchBeanDefinitionException.class,
+                () -> ac.getBean("beanB", BeanB.class));
+    }
+
+    @Configuration
+    @ComponentScan(
+            includeFilters = @Filter(type = FilterType.ANNOTATION, classes = MyIncludeComponent.class),
+            excludeFilters = @Filter(type = FilterType.ANNOTATION, classes = MyExcludeComponent.class)
+    )
+    static class ComponentFilterAppConfig {
+
+    }
+}
+```
+
+- `includeFilters` 에 `MyIncludeComponent` 애노테이션을 추가해서 BeanA가 스프링 빈에 등록된다.
+- `excludeFilters` 에 `MyExcludeComponent` 애노테이션을 추가해서 BeanB는 스프링 빈에 등록되지 않는다.
+
+<br/>
+
+### 4️⃣ FilterType 옵션
+
+- `ANNOTATION`  : 기본 값, 애노테이션을 인식해서 동작한다.
+- `ASSIGNABLE_TYPE`  : 지정한 타입과 자식 타입을 인식해서 동작한다.
+- `ASPECTJ`  : AspectJ 패턴 사용
+- `REGEX`  : 정규 표현식
+- `CUSTOM`  : TypeFilter이라는 인터페이스를 구현해서 처리
+
+> 참고 : `@Component` 면 충분하기 때문에, `includeFilters` 를 사용할 일은 거의 없다. `excludeFilters` 는 여러가지 이유로 사용할 때가 있지만 많지는 않다.
+>
